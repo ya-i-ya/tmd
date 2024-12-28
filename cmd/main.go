@@ -25,7 +25,7 @@ func main() {
 			return fmt.Errorf("not authorized: you need to sign in")
 		}
 
-		tgClient := tg.NewClient(client)
+		wrappedTgClient := tg.NewClient(client)
 
 		log.Println("Client is authorized and ready!")
 		return nil
