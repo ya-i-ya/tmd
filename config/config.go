@@ -11,6 +11,7 @@ type Config struct {
 		ApiID       int    `yaml:"api_id"`
 		ApiHash     string `yaml:"api_hash"`
 	} `yaml:"telegram"`
+
 	Download struct {
 		BaseDir string `yaml:"base_dir"`
 	} `yaml:"download"`
