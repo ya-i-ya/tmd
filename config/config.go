@@ -10,6 +10,7 @@ type Config struct {
 		PhoneNumber string `yaml:"phone_number"`
 		ApiID       int    `yaml:"api_id"`
 		ApiHash     string `yaml:"api_hash"`
+		Password    string `yaml:"password"`
 	} `yaml:"telegram"`
 
 	Download struct {
@@ -22,11 +23,9 @@ func LoadConfig(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
 		return nil, err
 	}
-
 	return &cfg, nil
 }
