@@ -17,6 +17,20 @@ type Config struct {
 	Download struct {
 		BaseDir string `yaml:"base_dir"`
 	} `yaml:"download"`
+
+	Logging struct {
+		Filename   string `yaml:"filename"`
+		MaxSize    int    `yaml:"max_size"`
+		MaxAge     int    `yaml:"max_age"`
+		MaxBackups int    `yaml:"max_backups"`
+		Compress   bool   `yaml:"compress"`
+		Level      string `yaml:"level"`
+	} `yaml:"logging"`
+
+	Fetching struct {
+		DialogsLimit  int `yaml:"dialogs_limit"`
+		MessagesLimit int `yaml:"messages_limit"`
+	} `yaml:"fetching"`
 }
 
 func (cfg *Config) Validate() error {

@@ -15,24 +15,32 @@ const (
 )
 
 type Fetcher struct {
-	client *telegram.Client
+	client        *telegram.Client
+	downloader    *Downloader
+	dialogsLimit  int
+	messagesLimit int
 }
 
-func NewFetcher(client *telegram.Client) *Fetcher {
-	return &Fetcher{client: client}
+func NewFetcher(client *telegram.Client, downloader *Downloader, dialogsLimit, messagesLimit int) *Fetcher {
+	return &Fetcher{
+		client:        client,
+		downloader:    downloader,
+		dialogsLimit:  dialogsLimit,
+		messagesLimit: messagesLimit,
+	}
 }
 
 func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 	tgClient := tg.NewClient(fetch.client)
 	offsetDate, offsetID := 0, 0
-	offsetPeer := &tg.InputPeerEmpty{}
+	var offsetPeer tg.InputPeerClass = &tg.InputPeerEmpty{}
 
 	for {
 		res, err := tgClient.MessagesGetDialogs(ctx, &tg.MessagesGetDialogsRequest{
 			OffsetDate: offsetDate,
 			OffsetID:   offsetID,
 			OffsetPeer: offsetPeer,
-			Limit:      DialogsLimit,
+			Limit:      fetch.dialogsLimit,
 			Hash:       0,
 		})
 		if err != nil {
@@ -46,12 +54,14 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 					logrus.WithError(err).Warn("failed to process dialog")
 				}
 			}
-			if len(d.Dialogs) < DialogsLimit {
+			if len(d.Dialogs) < fetch.dialogsLimit {
 				return nil
 			}
 			last := d.Dialogs[len(d.Dialogs)-1]
 			offsetPeer = fetch.getNextOffsetPeer(last)
-			offsetID, offsetDate = 0, 0
+			offsetID = 0
+			offsetDate = 0
+			// Сделай НОРМАЛЬНО
 
 		case *tg.MessagesDialogs:
 			for _, dialog := range d.Dialogs {
@@ -151,7 +161,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < MessagesLimit {
@@ -162,7 +172,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < MessagesLimit {
@@ -173,7 +183,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
 				return err
 			}
 			return nil
@@ -185,7 +195,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 	}
 }
 
-func (fetch *Fetcher) processMessagesBatch(messages []tg.MessageClass, offsetID *int) error {
+func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.MessageClass, offsetID *int) error {
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
 		if !ok {
@@ -195,26 +205,14 @@ func (fetch *Fetcher) processMessagesBatch(messages []tg.MessageClass, offsetID 
 		logrus.Infof("Message ID: %d, Content: %s", m.ID, m.Message)
 
 		if m.Media != nil {
-			fetch.processMedia(m)
+			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media); err != nil {
+				logrus.WithError(err).Errorf("Failed to process media for message ID: %d", m.ID)
+			}
 		}
+
 		if *offsetID == 0 || m.ID < *offsetID {
 			*offsetID = m.ID
 		}
 	}
 	return nil
-}
-
-func (fetch *Fetcher) processMedia(msg *tg.Message) {
-	switch media := msg.Media.(type) {
-	case *tg.MessageMediaPhoto:
-		//
-		logrus.Infof("Photo media in message ID: %d", msg.ID)
-		//
-	case *tg.MessageMediaDocument:
-		//
-		logrus.Infof("Document media in message ID: %d", msg.ID)
-	default:
-		//
-		logrus.Warnf("Unsupported media type in message ID: %d", msg.ID)
-	}
 }
