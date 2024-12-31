@@ -1,12 +1,18 @@
-module tTdw
+module tmd
 
 go 1.23.3
 
 toolchain go1.23.4
 
-require github.com/gotd/td v0.116.0
+require (
+	github.com/gotd/td v0.116.0
+	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/sirupsen/logrus v1.9.3
+	gopkg.in/yaml.v3 v3.0.1
+)
 
 require (
+	github.com/BurntSushi/toml v1.4.0 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/coder/websocket v1.8.12 // indirect
 	github.com/go-faster/errors v0.7.1 // indirect
@@ -25,5 +31,7 @@ require (
 	golang.org/x/net v0.32.0 // indirect
 	golang.org/x/sync v0.10.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
