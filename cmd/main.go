@@ -2,19 +2,29 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
-
 	"github.com/gotd/td/telegram"
-	"github.com/gotd/td/tg"
+	"github.com/sirupsen/logrus"
+	"log"
 	"tmd/config"
 	"tmd/internal"
+	"tmd/internal/logger"
 )
 
 func main() {
+	if err := run(); err != nil {
+		logrus.WithError(err).Fatal("Application failed")
+	}
+}
+func run() error {
+
+	if err := logger.SetupLogger("app.log"); err != nil {
+		log.Fatalf("Failed to setup logger: %v", err)
+	}
+
 	cfg, err := config.LoadConfig("configs/config.yaml")
 	if err != nil {
-		log.Fatalf("Failed to read config.yaml: %v", err)
+		logrus.WithError(err).Error("Failed to read config.yaml")
+		return err
 	}
 
 	client := telegram.NewClient(
@@ -23,17 +33,11 @@ func main() {
 		telegram.Options{},
 	)
 
-	err = client.Run(context.Background(), func(ctx context.Context) error {
-		if authErr := internal.EnsureAuth(ctx, client, cfg); authErr != nil {
-			return authErr
+	return client.Run(context.Background(), func(ctx context.Context) error {
+		if err := internal.EnsureAuth(ctx, client, cfg); err != nil {
+			return err
 		}
-		fmt.Println("Client is now authorized!")
-		tgClient := tg.NewClient(client)
-		_ = tgClient
-
+		logrus.Println("Client is authorized and ready!")
 		return nil
 	})
-	if err != nil {
-		log.Fatalf("Client run error: %v", err)
-	}
 }
