@@ -16,6 +16,10 @@ import (
 	"tmd/config"
 )
 
+var (
+	ErrNumberNotSet = errors.New("phone number is not set in config")
+)
+
 func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config) error {
 	status, err := client.Auth().Status(ctx)
 	if err != nil {
@@ -29,7 +33,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config
 
 	phoneNumber := cfg.Telegram.PhoneNumber
 	if phoneNumber == "" {
-		return errors.New("phone number is not set in config")
+		return ErrNumberNotSet
 	}
 
 	sentCode, err := client.Auth().SendCode(ctx, phoneNumber, auth.SendCodeOptions{
