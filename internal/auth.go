@@ -89,7 +89,6 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config
 			case "PHONE_CODE_EXPIRED":
 				return errors.New("the verification code has expired; request a new one")
 			case "PHONE_NUMBER_UNOCCUPIED":
-
 				return errors.New("this phone number is not registered on Telegram; sign-up is required")
 			default:
 				return fmt.Errorf("failed to sign in (rpc error: %s): %w", rpcErr.Type, signInErr)
