@@ -6,7 +6,7 @@ import (
 
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -51,7 +51,9 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 		case *tg.MessagesDialogsSlice:
 			for _, dialog := range d.Dialogs {
 				if err := fetch.processDialog(ctx, dialog, d.Users); err != nil {
-					logrus.WithError(err).Warn("failed to process dialog")
+					log.Warn().
+						Err(err).
+						Msg("Failed to process dialog")
 				}
 			}
 			if len(d.Dialogs) < fetch.dialogsLimit {
@@ -66,13 +68,17 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 		case *tg.MessagesDialogs:
 			for _, dialog := range d.Dialogs {
 				if err := fetch.processDialog(ctx, dialog, d.Users); err != nil {
-					logrus.WithError(err).Warn("failed to process dialog")
+					log.Warn().
+						Err(err).
+						Msg("Failed to process dialog")
 				}
 			}
 			return nil
 
 		default:
-			logrus.Warn("unexpected dialog type")
+			log.Warn().
+				Str("type", fmt.Sprintf("%T", res)).
+				Msg("Unexpected dialog type")
 			return nil
 		}
 	}
@@ -81,7 +87,9 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, users []tg.UserClass) error {
 	d, ok := dialog.(*tg.Dialog)
 	if !ok {
-		logrus.Warnf("skipping unsupported dialog type: %T", dialog)
+		log.Warn().
+			Str("dialog_type", fmt.Sprintf("%T", dialog)).
+			Msg("Skipping unsupported dialog type")
 		return nil
 	}
 
@@ -89,7 +97,9 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 	case *tg.PeerUser:
 		user, found := findUser(users, peer.UserID)
 		if !found {
-			logrus.Warnf("user not found for peer ID: %d", peer.UserID)
+			log.Warn().
+				Int64("user_id", peer.UserID).
+				Msg("User not found for peer ID")
 			return nil
 		}
 		inputPeer := &tg.InputPeerUser{
@@ -99,7 +109,9 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 		return fetch.FetchAndProcessMessages(ctx, inputPeer)
 
 	default:
-		logrus.Warnf("unsupported peer type: %T", peer)
+		log.Warn().
+			Str("peer_type", fmt.Sprintf("%T", peer)).
+			Msg("Unsupported peer type")
 		return nil
 	}
 }
@@ -107,13 +119,16 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 func (fetch *Fetcher) getNextOffsetPeer(dialog tg.DialogClass) tg.InputPeerClass {
 	d, ok := dialog.(*tg.Dialog)
 	if !ok {
-		logrus.Warnf("unexpected dialog type when getting next offset peer: %T", dialog)
+		log.Warn().
+			Str("dialog_type", fmt.Sprintf("%T", dialog)).
+			Msg("Unexpected dialog type when getting next offset peer")
 		return &tg.InputPeerEmpty{}
 	}
 
 	peer := d.GetPeer()
 	if peer == nil {
-		logrus.Warn("peer is nil, setting offsetPeer to InputPeerEmpty")
+		log.Warn().
+			Msg("Peer is nil, setting offsetPeer to InputPeerEmpty")
 		return &tg.InputPeerEmpty{}
 	}
 
@@ -189,7 +204,9 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			return nil
 
 		default:
-			logrus.Warnf("unexpected message history type: %T", msgs)
+			log.Warn().
+				Str("type", fmt.Sprintf("%T", history)).
+				Msg("Unexpected message history type")
 			return nil
 		}
 	}
@@ -199,14 +216,22 @@ func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.Me
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
 		if !ok {
-			logrus.Warnf("unsupported message type: %T", msg)
+			log.Warn().
+				Str("message_type", fmt.Sprintf("%T", msg)).
+				Msg("Unsupported message type")
 			continue
 		}
-		logrus.Infof("Message ID: %d, Content: %s", m.ID, m.Message)
+		log.Info().
+			Int("message_id", m.ID).
+			Str("content", m.Message).
+			Msg("Processing message")
 
 		if m.Media != nil {
-			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media); err != nil {
-				logrus.WithError(err).Errorf("Failed to process media for message ID: %d", m.ID)
+			if err := fetch.downloader.ProcessMedia(ctx, int(m.ID), m.Media); err != nil {
+				log.Error().
+					Err(err).
+					Int("message_id", m.ID).
+					Msg("Failed to process media for message")
 			}
 		}
 

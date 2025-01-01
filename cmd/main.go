@@ -3,27 +3,27 @@ package main
 import (
 	"context"
 	"github.com/gotd/td/telegram"
-	"github.com/sirupsen/logrus"
-	"log"
-	"tmd/config"
+	"tmd/cfg"
 	"tmd/internal"
 	"tmd/internal/logger"
+
+	"github.com/rs/zerolog/log"
 )
 
 func main() {
 	if err := run(); err != nil {
-		logrus.WithError(err).Fatal("Application failed")
+		log.Fatal().Err(err).Msg("Application failed")
 	}
 }
-func run() error {
 
+func run() error {
 	if err := logger.SetupLogger("app.log"); err != nil {
-		log.Fatalf("Failed to setup logger: %v", err)
+		log.Fatal().Err(err).Msgf("Failed to setup logger: %v", err)
 	}
 
-	cfg, err := config.LoadConfig("configs/config.yaml")
+	cfg, err := cfg.LoadConfig("example.config.yaml")
 	if err != nil {
-		logrus.WithError(err).Error("Failed to read config.yaml")
+		log.Error().Err(err).Msg("Failed to read cfg.yaml")
 		return err
 	}
 
@@ -37,7 +37,7 @@ func run() error {
 		if err := internal.EnsureAuth(ctx, client, cfg); err != nil {
 			return err
 		}
-		logrus.Println("Client is authorized and ready!")
+		log.Info().Msg("Client is authorized and ready!")
 		return nil
 	})
 }

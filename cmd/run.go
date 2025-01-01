@@ -7,7 +7,7 @@ package main
 //	"log"
 //
 //	"github.com/gotd/td/telegram"
-//	"tmd/config"
+//	"tmd/cfg"
 //	"tmd/internal"
 //	"tmd/internal/logger"
 //)
@@ -18,9 +18,9 @@ package main
 //		log.Fatalf("Failed to setup logger: %v", err)
 //	}
 //
-//	cfg, err := config.LoadConfig("configs/config.yaml")
+//	cfg, err := cfg.LoadConfig("configs/cfg.yaml")
 //	if err != nil {
-//		logrus.WithError(err).Error("Failed to read config.yaml")
+//		logrus.WithError(err).Error("Failed to read cfg.yaml")
 //	}
 //
 //	client := telegram.NewClient(

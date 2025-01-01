@@ -11,23 +11,23 @@ import (
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
 	"github.com/gotd/td/tgerr"
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog/log"
 
-	"tmd/config"
+	"tmd/cfg"
 )
 
 var (
-	ErrNumberNotSet = errors.New("phone number is not set in config")
+	ErrNumberNotSet = errors.New("phone number is not set in cfg")
 )
 
-func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config) error {
+func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) error {
 	status, err := client.Auth().Status(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get auth status: %w", err)
 	}
 
 	if status.Authorized {
-		logrus.Info("User is already authorized; no further action needed.")
+		log.Info().Msg("User is already authorized; no further action needed.")
 		return nil
 	}
 
@@ -61,7 +61,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config
 		return fmt.Errorf("failed to send code: %w", err)
 	}
 
-	logrus.Infof("A code was sent to phone number: %s", phoneNumber)
+	log.Info().Str("phone_number", phoneNumber).Msg("A code was sent to phone number")
 
 	code, err := promptInput("Enter the code you received from Telegram: ")
 	if err != nil {
@@ -75,12 +75,12 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config
 	if signInErr != nil {
 		if errors.Is(auth.ErrPasswordAuthNeeded, signInErr) {
 			if cfg.Telegram.Password == "" {
-				return errors.New("this account requires a 2FA password, but config is empty")
+				return errors.New("this account requires a 2FA password, but cfg is empty")
 			}
 			if _, passErr := client.Auth().Password(ctx, cfg.Telegram.Password); passErr != nil {
 				return fmt.Errorf("failed to authenticate with 2FA password: %w", passErr)
 			}
-			logrus.Info("Successfully authenticated with 2FA password.")
+			log.Info().Msg("Successfully authenticated with 2FA password.")
 			return nil
 		}
 
@@ -100,7 +100,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *config.Config
 		}
 		return fmt.Errorf("failed to sign in with code: %w", signInErr)
 	}
-	logrus.Info("Successfully authenticated with phone code.")
+	log.Info().Msg("Successfully authenticated with phone code.")
 	return nil
 }
 
