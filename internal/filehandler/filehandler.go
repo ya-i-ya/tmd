@@ -1,40 +1,10 @@
-package internal
+package filehandler
 
 import (
 	"os"
 
 	"github.com/rs/zerolog/log"
 )
-
-func saveFile(path string, data []byte) error {
-	file, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer func(file *os.File) {
-		err := file.Close()
-		if err != nil {
-			log.Error().
-				Err(err).
-				Str("file", path).
-				Msg("Failed to close file")
-		}
-	}(file)
-
-	_, err = file.Write(data)
-	if err != nil {
-		log.Error().
-			Err(err).
-			Str("file", path).
-			Msg("Failed to write data to file")
-		return err
-	}
-
-	log.Info().
-		Str("file", path).
-		Msg("File saved successfully")
-	return nil
-}
 
 func getFileExtension(mimeType string) string {
 	switch mimeType {
@@ -67,5 +37,38 @@ func ensureDir(path string) error {
 	log.Debug().
 		Str("path", path).
 		Msg("Directory ensured")
+	return nil
+}
+
+func saveFile(path string, data []byte) error {
+	file, err := os.Create(path)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("file", path).
+			Msg("Failed to create file")
+		return err
+	}
+	defer func(file *os.File) {
+		if err := file.Close(); err != nil {
+			log.Error().
+				Err(err).
+				Str("file", path).
+				Msg("Failed to close file")
+		}
+	}(file)
+
+	_, err = file.Write(data)
+	if err != nil {
+		log.Error().
+			Err(err).
+			Str("file", path).
+			Msg("Failed to write data to file")
+		return err
+	}
+
+	log.Info().
+		Str("file", path).
+		Msg("File saved successfully")
 	return nil
 }

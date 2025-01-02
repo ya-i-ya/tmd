@@ -3,6 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
+	"tmd/internal/filehandler"
 
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
@@ -11,12 +12,12 @@ import (
 
 type Fetcher struct {
 	client        *telegram.Client
-	downloader    *Downloader
+	downloader    *filehandler.Downloader
 	dialogsLimit  int
 	messagesLimit int
 }
 
-func NewFetcher(client *telegram.Client, downloader *Downloader, dialogsLimit, messagesLimit int) *Fetcher {
+func NewFetcher(client *telegram.Client, downloader *filehandler.Downloader, dialogsLimit, messagesLimit int) *Fetcher {
 	return &Fetcher{
 		client:        client,
 		downloader:    downloader,
@@ -100,8 +101,8 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 			UserID:     user.ID,
 			AccessHash: user.AccessHash,
 		}
-		return fetch.FetchAndProcessMessages(ctx, inputPeer)
-
+		chatID := int(user.ID)
+		return fetch.FetchAndProcessMessages(ctx, inputPeer, chatID)
 	default:
 		log.Warn().
 			Str("peer_type", fmt.Sprintf("%T", peer)).
@@ -151,7 +152,7 @@ func dialogToInputPeer(peer tg.PeerClass) tg.InputPeerClass {
 	}
 }
 
-func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass) error {
+func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, chatID int) error {
 	tgClient := tg.NewClient(fetch.client)
 	offsetID := 0
 
@@ -171,7 +172,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < fetch.messagesLimit {
@@ -182,7 +183,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < fetch.messagesLimit {
@@ -193,7 +194,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
+			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
 			return nil
@@ -207,7 +208,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 	}
 }
 
-func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.MessageClass, offsetID *int) error {
+func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.MessageClass, offsetID *int, chatID int) error {
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
 		if !ok {
@@ -222,7 +223,7 @@ func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.Me
 			Msg("Processing message")
 
 		if m.Media != nil {
-			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media); err != nil {
+			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media, chatID); err != nil {
 				log.Error().
 					Err(err).
 					Int("message_id", m.ID).

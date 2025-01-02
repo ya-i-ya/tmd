@@ -1,4 +1,4 @@
-package internal
+package filehandler
 
 import (
 	"context"
@@ -20,12 +20,12 @@ func NewDownloader(client *telegram.Client, baseDir string) *Downloader {
 	}
 }
 
-func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.MessageMediaClass) error {
+func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.MessageMediaClass, chatID int) error {
 	switch m := media.(type) {
 	case *tg.MessageMediaPhoto:
-		return d.DownloadPhoto(ctx, messageID, m)
+		return d.DownloadPhoto(ctx, messageID, m, chatID)
 	case *tg.MessageMediaDocument:
-		return d.DownloadDocument(ctx, messageID, m)
+		return d.DownloadDocument(ctx, messageID, m, chatID)
 	default:
 		log.Warn().
 			Str("media_type", fmt.Sprintf("%T", m)).
@@ -35,8 +35,8 @@ func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.M
 	}
 }
 
-func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg.MessageMediaPhoto) error {
-
+func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg.MessageMediaPhoto, chatID int) error {
+	//
 	log.Info().
 		Int("message_id", messageID).
 		Str("media_type", "photo").
@@ -44,7 +44,7 @@ func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg
 	return nil
 }
 
-func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media *tg.MessageMediaDocument) error {
+func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media *tg.MessageMediaDocument, chatID int) error {
 	//
 	log.Info().
 		Int("message_id", messageID).
