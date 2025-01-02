@@ -3,21 +3,16 @@ package internal
 import (
 	"bufio"
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 
+	stdErrors "errors"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
-	"github.com/gotd/td/tgerr"
 	"github.com/rs/zerolog/log"
-
 	"tmd/cfg"
-)
-
-var (
-	ErrNumberNotSet = errors.New("phone number is not set in cfg")
+	"tmd/errors"
 )
 
 func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) error {
@@ -33,7 +28,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 
 	phoneNumber := cfg.Telegram.PhoneNumber
 	if phoneNumber == "" {
-		return ErrNumberNotSet
+		return errors.ErrNumberNotSet
 	}
 
 	sentCode, err := client.Auth().SendCode(ctx, phoneNumber, auth.SendCodeOptions{
@@ -41,66 +36,49 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 		CurrentNumber:  true,
 		AllowAppHash:   true,
 	})
-
 	if err != nil {
-		var rpcErr *tgerr.Error
-		if errors.As(err, &rpcErr) {
-			switch rpcErr.Type {
-			case "PHONE_NUMBER_INVALID":
-				return fmt.Errorf("the phone number %q is invalid", phoneNumber)
-			case "PHONE_NUMBER_FLOOD":
-				return errors.New("too many attempts, please wait before trying again")
-			case "PHONE_NUMBER_BANNED":
-				return fmt.Errorf("the phone number %q is banned from Telegram", phoneNumber)
-			case "PHONE_NUMBER_OCCUPIED":
-				return fmt.Errorf("unexpected phone_number_occupied error: %w", err)
-			default:
-				return fmt.Errorf("failed to send code (rpc error: %s): %w", rpcErr.Type, err)
-			}
+		if tgErr := errors.HandleTGError(err); tgErr != nil {
+			return tgErr
 		}
 		return fmt.Errorf("failed to send code: %w", err)
 	}
 
-	log.Info().Str("phone_number", phoneNumber).Msg("A code was sent to phone number")
+	if sentCode.String() == "" {
+		log.Error().Msg("PhoneCodeHash is empty in SentCode response")
+		return stdErrors.New("PhoneCodeHash is empty in the SentCode response")
+	}
 
 	code, err := promptInput("Enter the code you received from Telegram: ")
 	if err != nil {
-		return err
-	}
-	if code == "" {
-		return errors.New("the code cannot be empty")
+		return fmt.Errorf("error reading input: %w", err)
 	}
 
-	_, signInErr := client.Auth().SignIn(ctx, phoneNumber, sentCode.String(), code)
-	if signInErr != nil {
-		if errors.Is(auth.ErrPasswordAuthNeeded, signInErr) {
-			if cfg.Telegram.Password == "" {
-				return errors.New("this account requires a 2FA password, but cfg is empty")
-			}
-			if _, passErr := client.Auth().Password(ctx, cfg.Telegram.Password); passErr != nil {
-				return fmt.Errorf("failed to authenticate with 2FA password: %w", passErr)
-			}
-			log.Info().Msg("Successfully authenticated with 2FA password.")
-			return nil
+	if _, err := client.Auth().SignIn(ctx, phoneNumber, sentCode.String(), code); err != nil {
+		if errors.Is2FAError(err) {
+			return handleTwoFactorAuth(ctx, client, cfg)
 		}
-
-		var rpcErr *tgerr.Error
-
-		if errors.As(signInErr, &rpcErr) {
-			switch rpcErr.Type {
-			case "PHONE_CODE_INVALID":
-				return errors.New("the verification code you entered is invalid")
-			case "PHONE_CODE_EXPIRED":
-				return errors.New("the verification code has expired; request a new one")
-			case "PHONE_NUMBER_UNOCCUPIED":
-				return errors.New("this phone number is not registered on Telegram; sign-up is required")
-			default:
-				return fmt.Errorf("failed to sign in (rpc error: %s): %w", rpcErr.Type, signInErr)
-			}
+		if tgErr := errors.HandleTGError(err); tgErr != nil {
+			return tgErr
 		}
-		return fmt.Errorf("failed to sign in with code: %w", signInErr)
+		return fmt.Errorf("failed to sign in with the provided code: %w", err)
 	}
+
 	log.Info().Msg("Successfully authenticated with phone code.")
+	return nil
+
+}
+
+func handleTwoFactorAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) error {
+	password := cfg.Telegram.Password
+	if password == "" {
+		return errors.ErrPasswordEmpty
+	}
+
+	if _, err := client.Auth().Password(ctx, password); err != nil {
+		return fmt.Errorf("failed to authenticate with 2FA password: %w", err)
+	}
+
+	log.Info().Msg("Successfully authenticated with 2FA password.")
 	return nil
 }
 
@@ -111,5 +89,9 @@ func promptInput(prompt string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read user input: %w", err)
 	}
-	return strings.TrimSpace(input), nil
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return "", errors.ErrCodeEmpty
+	}
+	return input, nil
 }
