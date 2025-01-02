@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"tmd/pkg/cfg"
 
 	stdErrors "errors"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
 	"github.com/rs/zerolog/log"
-	"tmd/cfg"
 	"tmd/errors"
 )
 
