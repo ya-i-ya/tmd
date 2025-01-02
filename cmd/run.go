@@ -18,9 +18,9 @@ package main
 //		log.Fatalf("Failed to setup logger: %v", err)
 //	}
 //
-//	cfg, err := cfg.LoadConfig("configs/cfg.yaml")
+//	cfg, err := cfg.LoadConfig("configs/config.yaml")
 //	if err != nil {
-//		logrus.WithError(err).Error("Failed to read cfg.yaml")
+//		logrus.WithError(err).Error("Failed to read config.yaml")
 //	}
 //
 //	client := telegram.NewClient(
