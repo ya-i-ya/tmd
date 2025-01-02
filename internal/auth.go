@@ -36,6 +36,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 		CurrentNumber:  true,
 		AllowAppHash:   true,
 	})
+
 	if err != nil {
 		if tgErr := errors.HandleTGError(err); tgErr != nil {
 			return tgErr
@@ -53,7 +54,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 		return fmt.Errorf("error reading input: %w", err)
 	}
 
-	if _, err := client.Auth().SignIn(ctx, phoneNumber, sentCode.String(), code); err != nil {
+	if _, err := client.Auth().SignIn(ctx, phoneNumber, code, sentCode.String()); err != nil {
 		if errors.Is2FAError(err) {
 			return handleTwoFactorAuth(ctx, client, cfg)
 		}
@@ -89,9 +90,11 @@ func promptInput(prompt string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to read user input: %w", err)
 	}
+
 	input = strings.TrimSpace(input)
 	if input == "" {
 		return "", errors.ErrCodeEmpty
 	}
+
 	return input, nil
 }
