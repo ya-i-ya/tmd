@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/gotd/td/telegram"
-	"os"
-
 	"github.com/gotd/td/tg"
 	"github.com/rs/zerolog/log"
 )
@@ -38,7 +36,7 @@ func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.M
 }
 
 func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg.MessageMediaPhoto) error {
-	//
+
 	log.Info().
 		Int("message_id", messageID).
 		Str("media_type", "photo").
@@ -52,15 +50,5 @@ func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media 
 		Int("message_id", messageID).
 		Str("media_type", "document").
 		Msg("Downloading document")
-	return nil
-}
-
-func ensureDir(path string) error {
-	err := os.MkdirAll(path, os.ModePerm)
-	if err != nil {
-		log.Error().Err(err).Str("path", path).Msg("Failed to create directory")
-		return err
-	}
-	log.Info().Str("path", path).Msg("Directory ensured")
 	return nil
 }
