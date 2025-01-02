@@ -9,11 +9,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	DialogsLimit  = 100
-	MessagesLimit = 50
-)
-
 type Fetcher struct {
 	client        *telegram.Client
 	downloader    *Downloader
@@ -63,7 +58,6 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 			offsetPeer = fetch.getNextOffsetPeer(last)
 			offsetID = 0
 			offsetDate = 0
-			// Сделай НОРМАЛЬНО
 
 		case *tg.MessagesDialogs:
 			for _, dialog := range d.Dialogs {
@@ -165,8 +159,9 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 		history, err := tgClient.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{
 			Peer:     peer,
 			OffsetID: offsetID,
-			Limit:    MessagesLimit,
+			Limit:    fetch.messagesLimit,
 		})
+
 		if err != nil {
 			return fmt.Errorf("failed to fetch message history: %w", err)
 		}
@@ -179,7 +174,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
 				return err
 			}
-			if len(msgs.Messages) < MessagesLimit {
+			if len(msgs.Messages) < fetch.messagesLimit {
 				return nil
 			}
 
@@ -190,7 +185,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID); err != nil {
 				return err
 			}
-			if len(msgs.Messages) < MessagesLimit {
+			if len(msgs.Messages) < fetch.messagesLimit {
 				return nil
 			}
 
@@ -227,7 +222,7 @@ func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.Me
 			Msg("Processing message")
 
 		if m.Media != nil {
-			if err := fetch.downloader.ProcessMedia(ctx, int(m.ID), m.Media); err != nil {
+			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media); err != nil {
 				log.Error().
 					Err(err).
 					Int("message_id", m.ID).
