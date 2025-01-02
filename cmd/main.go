@@ -5,7 +5,7 @@ import (
 	"github.com/gotd/td/telegram"
 	"tmd/cfg"
 	"tmd/internal"
-	"tmd/internal/logger"
+	"tmd/logger"
 
 	"github.com/rs/zerolog/log"
 )
@@ -17,13 +17,13 @@ func main() {
 }
 
 func run() error {
-	if err := logger.SetupLogger("app.log"); err != nil {
+	if err := logger.SetupLogger("tmd.log"); err != nil {
 		log.Fatal().Err(err).Msgf("Failed to setup logger: %v", err)
 	}
 
-	cfg, err := cfg.LoadConfig("example.config.yaml")
+	cfg, err := cfg.LoadConfig("config.yaml")
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read cfg.yaml")
+		log.Error().Err(err).Msg("Failed to read config.yaml")
 		return err
 	}
 
