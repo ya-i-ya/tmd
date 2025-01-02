@@ -15,10 +15,7 @@ type Config struct {
 	} `yaml:"telegram"`
 
 	Download struct {
-		BaseDir     string `yaml:"base_dir"`
-		videoDir    string `yaml:"video_dir"`
-		photoDir    string `yaml:"photo_dir"`
-		documentDir string `yaml:"document_dir"`
+		BaseDir string `yaml:"base_dir"`
 	} `yaml:"download"`
 
 	Logging struct {
