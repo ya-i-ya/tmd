@@ -25,3 +25,5 @@ go.work.sum
 .env
 
 .idea/
+config.yaml
+tdm/cmd/run.go
