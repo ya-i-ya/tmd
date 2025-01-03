@@ -3,8 +3,8 @@ package internal
 import (
 	"context"
 	"time"
-	"tmd/internal/filehandler"
 	"tmd/pkg/cfg"
+	"tmd/pkg/filehandler"
 	"tmd/pkg/logger"
 
 	"github.com/gotd/td/telegram"

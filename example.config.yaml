@@ -9,11 +9,11 @@ download:
   base_dir: "/path/to/download/directory"  # Absolute or relative path where media will be downloaded
 
 logging:
-  filename: "app.log"       # Log file name (can include path)
-  max_size: 10              # Maximum size in megabytes before log rotation occurs
-  max_age: 28               # Maximum number of days to retain old log files
-  max_backups: 5            # Maximum number of old log files to keep
-  compress: true            # Whether to compress rotated log files
+  filename: "app.logger"       # Log file name (can include path)
+  max_size: 10              # Maximum size in megabytes before logger rotation occurs
+  max_age: 28               # Maximum number of days to retain old logger files
+  max_backups: 5            # Maximum number of old logger files to keep
+  compress: true            # Whether to compress rotated logger files
   level: "info"             # Logging level (e.g., debug, info, warn, error)
 
 fetching:

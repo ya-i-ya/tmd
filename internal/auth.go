@@ -7,12 +7,12 @@ import (
 	"os"
 	"strings"
 	"tmd/pkg/cfg"
+	"tmd/pkg/err"
 
 	stdErrors "errors"
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/telegram/auth"
 	"github.com/rs/zerolog/log"
-	"tmd/errors"
 )
 
 func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) error {
@@ -28,7 +28,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 
 	phoneNumber := cfg.Telegram.PhoneNumber
 	if phoneNumber == "" {
-		return errors.ErrNumberNotSet
+		return err.ErrNumberNotSet
 	}
 
 	sentCode, err := client.Auth().SendCode(ctx, phoneNumber, auth.SendCodeOptions{
@@ -38,7 +38,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 	})
 
 	if err != nil {
-		if tgErr := errors.HandleTGError(err); tgErr != nil {
+		if tgErr := err.HandleTGError(err); tgErr != nil {
 			return tgErr
 		}
 		return fmt.Errorf("failed to send code: %w", err)
@@ -55,10 +55,10 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 	}
 
 	if _, err := client.Auth().SignIn(ctx, phoneNumber, code, sentCode.String()); err != nil {
-		if errors.Is2FAError(err) {
+		if err.Is2FAError(err) {
 			return handleTwoFactorAuth(ctx, client, cfg)
 		}
-		if tgErr := errors.HandleTGError(err); tgErr != nil {
+		if tgErr := err.HandleTGError(err); tgErr != nil {
 			return tgErr
 		}
 		return fmt.Errorf("failed to sign in with the provided code: %w", err)
@@ -72,7 +72,7 @@ func EnsureAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) e
 func handleTwoFactorAuth(ctx context.Context, client *telegram.Client, cfg *cfg.Config) error {
 	password := cfg.Telegram.Password
 	if password == "" {
-		return errors.ErrPasswordEmpty
+		return err.ErrPasswordEmpty
 	}
 
 	if _, err := client.Auth().Password(ctx, password); err != nil {
@@ -93,7 +93,7 @@ func promptInput(prompt string) (string, error) {
 
 	input = strings.TrimSpace(input)
 	if input == "" {
-		return "", errors.ErrCodeEmpty
+		return "", err.ErrCodeEmpty
 	}
 
 	return input, nil

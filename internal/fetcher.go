@@ -3,7 +3,7 @@ package internal
 import (
 	"context"
 	"fmt"
-	"tmd/internal/filehandler"
+	"tmd/pkg/filehandler"
 
 	"github.com/gotd/td/telegram"
 	"github.com/gotd/td/tg"
