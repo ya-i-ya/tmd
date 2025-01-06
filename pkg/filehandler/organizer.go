@@ -16,7 +16,7 @@ func NewOrganizer(baseDir string) *Organizer {
 	return &Organizer{BaseDir: baseDir}
 }
 
-func (o *Organizer) getDirPath(mimeType string, chatID, mediaID int) (string, error) {
+func (o *Organizer) getDirPath(mimeType string, chatID int) (string, error) {
 	mimeDir := strings.TrimRight(mimeType, "/")
 	dirPath := filepath.Join(o.BaseDir, fmt.Sprintf("%d", chatID), mimeDir)
 	if err := ensureDir(dirPath); err != nil {
@@ -31,7 +31,7 @@ func (o *Organizer) getDirPath(mimeType string, chatID, mediaID int) (string, er
 
 func (o *Organizer) getFilePath(mimeType string, chatID, mediaID int) (string, error) {
 	extension := getFileExtension(mimeType)
-	dirPath, err := o.getDirPath(mimeType, chatID, mediaID)
+	dirPath, err := o.getDirPath(mimeType, chatID)
 	if err != nil {
 		return "", err
 	}
