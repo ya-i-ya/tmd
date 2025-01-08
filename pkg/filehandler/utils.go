@@ -20,6 +20,10 @@ func getFileExtension(mimeType string) string {
 		return ".mpeg"
 	case "audio/mpeg":
 		return ".mp3"
+	case "application/zip":
+		return ".zip"
+	case "audio/ogg":
+		return ".ogg"
 	default:
 		return ".dat"
 	}
