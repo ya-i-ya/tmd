@@ -31,6 +31,16 @@ type Config struct {
 		DialogsLimit  int `yaml:"dialogs_limit"`
 		MessagesLimit int `yaml:"messages_limit"`
 	} `yaml:"fetching"`
+
+	Database struct {
+		Dialect  string `yaml:"dialect"`
+		Host     string `yaml:"host"`
+		Port     int    `yaml:"port"`
+		User     string `yaml:"user"`
+		Password string `yaml:"password"`
+		DBName   string `yaml:"dbname"`
+		SSLMode  string `yaml:"sslmode"`
+	} `yaml:"database"`
 }
 
 func (cfg *Config) Validate() error {
