@@ -14,8 +14,17 @@ logging:
   max_age: 28               # Maximum number of days to retain old logger files
   max_backups: 5            # Maximum number of old logger files to keep
   compress: true            # Whether to compress rotated logger files
-  level: "info"             # Logging level (e.g., debug, info, warn, error)
+  level: "info"             # Logging level
 
 fetching:
   dialogs_limit: 100        # Maximum number of dialogs to fetch in one request
   messages_limit: 50        # Maximum number of messages to fetch per dialog
+
+database:
+  dialect: "postgres"                   # Database dialect
+  host: "localhost"                     # Database host
+  port: 5432                            # Database port
+  user: "your_db_user"                  # Database user
+  password: "your_db_password"          # Database password
+  dbname: "your_db_name"                # Database name
+  sslmode: "disable"                    # SSL mode
