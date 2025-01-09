@@ -41,6 +41,15 @@ type Config struct {
 		DBName   string `yaml:"dbname"`
 		SSLMode  string `yaml:"sslmode"`
 	} `yaml:"database"`
+
+	Minio struct {
+		Endpoint  string `yaml:"endpoint"`
+		AccessKey string `yaml:"access_key"`
+		SecretKey string `yaml:"secret_key"`
+		Bucket    string `yaml:"bucket"`
+		BasePath  string `yaml:"base_path"`
+		UseSSL    bool   `yaml:"use_ssl"`
+	} `yaml:"minio"`
 }
 
 func (cfg *Config) Validate() error {
@@ -52,6 +61,27 @@ func (cfg *Config) Validate() error {
 	}
 	if cfg.Telegram.PhoneNumber == "" {
 		return errors.New("telegram.phone_number is required")
+	}
+	if cfg.Database.Dialect == "" {
+		return errors.New("database.dialect is required")
+	}
+	if cfg.Database.Host == "" {
+		return errors.New("database.host is required")
+	}
+	if cfg.Database.Port == 0 {
+		return errors.New("database.port is required")
+	}
+	if cfg.Database.DBName == "" {
+		return errors.New("database.dbname is required")
+	}
+	if cfg.Minio.Endpoint == "" {
+		return errors.New("minio.endpoint is required")
+	}
+	if cfg.Minio.AccessKey == "" || cfg.Minio.SecretKey == "" {
+		return errors.New("minio.access_key and minio.secret_key are required")
+	}
+	if cfg.Minio.Bucket == "" {
+		return errors.New("minio.bucket is required")
 	}
 	return nil
 }
