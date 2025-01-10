@@ -3,6 +3,10 @@ package internal
 import (
 	"context"
 	"fmt"
+	"github.com/google/uuid"
+	"sync"
+	"tmd/internal/db"
+	"tmd/minio"
 	"tmd/pkg/filehandler"
 
 	"github.com/gotd/td/telegram"
@@ -13,21 +17,85 @@ import (
 type Fetcher struct {
 	client        *telegram.Client
 	downloader    *filehandler.Downloader
+	database      *db.DB
+	storage       *minio.Storage
 	dialogsLimit  int
 	messagesLimit int
+
+	meChan chan MeJob // ^.^
+	wg     sync.WaitGroup
 }
 
-func NewFetcher(client *telegram.Client, downloader *filehandler.Downloader, dialogsLimit, messagesLimit int) *Fetcher {
-	return &Fetcher{
+type MeJob struct {
+	MessageID     int
+	Media         tg.MessageMediaClass
+	ChatID        int
+	UserID        uuid.UUID
+	MediaFilePath string
+	MediaURL      string
+}
+
+func NewFetcher(client *telegram.Client, downloader *filehandler.Downloader, database *db.DB, storage *minio.Storage, dialogsLimit, messagesLimit int) *Fetcher {
+	f := &Fetcher{
 		client:        client,
 		downloader:    downloader,
+		database:      database,
+		storage:       storage,
 		dialogsLimit:  dialogsLimit,
 		messagesLimit: messagesLimit,
+		meChan:        make(chan MeJob, 100),
+	}
+
+	workerCount := 5
+	for i := 0; i < workerCount; i++ {
+		f.wg.Add(1)
+		go f.meJob()
+	}
+
+	return f
+}
+func (f *Fetcher) meJob() {
+	defer f.wg.Done()
+	for job := range f.meChan {
+		err := f.handleMeJob(job)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Int("message_id", job.MessageID).
+				Msg("Failed to handle media job")
+		}
 	}
 }
 
-func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
-	tgClient := tg.NewClient(fetch.client)
+func (f *Fetcher) handleMeJob(job MeJob) error {
+	mimeType, err := getMimeType(job.Media)
+	if err != nil {
+		return fmt.Errorf("determine MIME type: %w", err)
+	}
+
+	mediaURL, err := f.storage.StoreFile(context.Background(), job.MediaFilePath, mimeType)
+	if err != nil {
+		return fmt.Errorf("upload to MinIO: %w", err)
+	}
+	job.MediaURL = mediaURL
+
+	err = f.database.Conn.Model(&db.Message{}).
+		Where("message_id = ?", job.MessageID).
+		Update("media_url", mediaURL).Error
+	if err != nil {
+		return fmt.Errorf("update database with media URL: %w", err)
+	}
+
+	log.Info().
+		Int("message_id", job.MessageID).
+		Str("media_url", mediaURL).
+		Msg("Media uploaded to MinIO and database updated successfully")
+
+	return nil
+}
+
+func (f *Fetcher) FetchAllDMs(ctx context.Context) error {
+	tgClient := tg.NewClient(f.client)
 	offsetDate, offsetID := 0, 0
 	var offsetPeer tg.InputPeerClass = &tg.InputPeerEmpty{}
 
@@ -36,7 +104,7 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 			OffsetDate: offsetDate,
 			OffsetID:   offsetID,
 			OffsetPeer: offsetPeer,
-			Limit:      fetch.dialogsLimit,
+			Limit:      f.dialogsLimit,
 			Hash:       0,
 		})
 		if err != nil {
@@ -46,23 +114,23 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 		switch d := res.(type) {
 		case *tg.MessagesDialogsSlice:
 			for _, dialog := range d.Dialogs {
-				if err := fetch.processDialog(ctx, dialog, d.Users); err != nil {
+				if err := f.processDialog(ctx, dialog, d.Users); err != nil {
 					log.Warn().
 						Err(err).
 						Msg("Failed to process dialog")
 				}
 			}
-			if len(d.Dialogs) < fetch.dialogsLimit {
+			if len(d.Dialogs) < f.dialogsLimit {
 				return nil
 			}
 			last := d.Dialogs[len(d.Dialogs)-1]
-			offsetPeer = fetch.getNextOffsetPeer(last)
+			offsetPeer = f.getNextOffsetPeer(last)
 			offsetID = 0
 			offsetDate = 0
 
 		case *tg.MessagesDialogs:
 			for _, dialog := range d.Dialogs {
-				if err := fetch.processDialog(ctx, dialog, d.Users); err != nil {
+				if err := f.processDialog(ctx, dialog, d.Users); err != nil {
 					log.Warn().
 						Err(err).
 						Msg("Failed to process dialog")
@@ -79,7 +147,7 @@ func (fetch *Fetcher) FetchAllDMs(ctx context.Context) error {
 	}
 }
 
-func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, users []tg.UserClass) error {
+func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, users []tg.UserClass) error {
 	d, ok := dialog.(*tg.Dialog)
 	if !ok {
 		log.Warn().
@@ -102,7 +170,7 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 			AccessHash: user.AccessHash,
 		}
 		chatID := int(user.ID)
-		return fetch.FetchAndProcessMessages(ctx, inputPeer, chatID)
+		return f.FetchAndProcessMessages(ctx, inputPeer, chatID)
 	default:
 		log.Warn().
 			Str("peer_type", fmt.Sprintf("%T", peer)).
@@ -111,7 +179,7 @@ func (fetch *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, 
 	}
 }
 
-func (fetch *Fetcher) getNextOffsetPeer(dialog tg.DialogClass) tg.InputPeerClass {
+func (f *Fetcher) getNextOffsetPeer(dialog tg.DialogClass) tg.InputPeerClass {
 	d, ok := dialog.(*tg.Dialog)
 	if !ok {
 		log.Warn().
@@ -152,19 +220,19 @@ func dialogToInputPeer(peer tg.PeerClass) tg.InputPeerClass {
 	}
 }
 
-func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, chatID int) error {
-	tgClient := tg.NewClient(fetch.client)
+func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, chatID int) error {
+	tgClient := tg.NewClient(f.client)
 	offsetID := 0
 
 	for {
 		history, err := tgClient.MessagesGetHistory(ctx, &tg.MessagesGetHistoryRequest{
 			Peer:     peer,
 			OffsetID: offsetID,
-			Limit:    fetch.messagesLimit,
+			Limit:    f.messagesLimit,
 		})
 
 		if err != nil {
-			return fmt.Errorf("failed to fetch message history: %w", err)
+			return fmt.Errorf("failed to f message history: %w", err)
 		}
 
 		switch msgs := history.(type) {
@@ -172,10 +240,10 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
-			if len(msgs.Messages) < fetch.messagesLimit {
+			if len(msgs.Messages) < f.messagesLimit {
 				return nil
 			}
 
@@ -183,10 +251,10 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
-			if len(msgs.Messages) < fetch.messagesLimit {
+			if len(msgs.Messages) < f.messagesLimit {
 				return nil
 			}
 
@@ -194,7 +262,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := fetch.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
 				return err
 			}
 			return nil
@@ -208,7 +276,7 @@ func (fetch *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.Input
 	}
 }
 
-func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.MessageClass, offsetID *int, chatID int) error {
+func (f *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.MessageClass, offsetID *int, chatID int) error {
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
 		if !ok {
@@ -223,7 +291,7 @@ func (fetch *Fetcher) processMessagesBatch(ctx context.Context, messages []tg.Me
 			Msg("Processing message")
 
 		if m.Media != nil {
-			if err := fetch.downloader.ProcessMedia(ctx, m.ID, m.Media, chatID); err != nil {
+			if err := f.downloader.ProcessMedia(ctx, m.ID, m.Media, chatID); err != nil {
 				log.Error().
 					Err(err).
 					Int("message_id", m.ID).
