@@ -66,9 +66,8 @@ func (f *Fetcher) meJob() {
 		}
 	}
 }
-
 func (f *Fetcher) handleMeJob(job MeJob) error {
-	mimeType, err := getMimeType(job.Media)
+	mimeType, err := filehandler.GetMimeType(job.Media)
 	if err != nil {
 		return fmt.Errorf("determine MIME type: %w", err)
 	}
