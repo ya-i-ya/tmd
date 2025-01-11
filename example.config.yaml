@@ -20,6 +20,14 @@ fetching:
   dialogs_limit: 100        # Maximum number of dialogs to fetch in one request
   messages_limit: 50        # Maximum number of messages to fetch per dialog
 
+minio:
+  endpoint: "localhost:9000"         # Host and port where MinIO is accessible
+  access_key: "localuser"            # MinIO root user (matches MINIO_ROOT_USER)
+  secret_key: "localpass"            # MinIO root password (matches MINIO_ROOT_PASSWORD)
+  bucket: "tmd"                      # Name of the bucket to store media files
+  base_path: "me"                    # An optional folder path (prefix) within the bucket
+  use_ssl: false                     # Whether to connect via HTTPS (true) or HTTP (false)
+
 database:
   dialect: "postgres"                   # Database dialect
   host: "localhost"                     # Database host

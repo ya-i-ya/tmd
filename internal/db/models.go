@@ -6,46 +6,46 @@ import (
 	"time"
 )
 
+type Chat struct {
+	ChatID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Title    string    `gorm:"size:255"`
+	Messages []Message `gorm:"foreignKey:ChatID;references:ChatID"`
+}
+
 type Model struct {
-	ID        uuid.UUID `gorm:"type:uuid;primaryKey"`
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 }
 
-func (b *Model) BeforeCreate(tx *gorm.DB) (err error) {
-	if b.ID == uuid.Nil {
-		b.ID = uuid.New()
+func (m *Model) BeforeCreate(db *gorm.DB) (err error) {
+	if m.ID == uuid.Nil {
+		m.ID = uuid.New()
 	}
-	return
+	return nil
 }
 
 type User struct {
 	Model
-	TelegramUserID int64      `gorm:"uniqueIndex;not null"`
-	Username       string     `gorm:"size:255"`
-	FirstName      string     `gorm:"size:255"`
-	LastName       string     `gorm:"size:255"`
-	Messages       []Message  `gorm:"foreignKey:UserID"`
-	Chats          []ChatUser `gorm:"foreignKey:UserID"`
+	TelegramUserID int64     `gorm:"uniqueIndex;not null"`
+	Username       string    `gorm:"size:255"`
+	FirstName      string    `gorm:"size:255"`
+	LastName       string    `gorm:"size:255"`
+	Messages       []Message `gorm:"foreignKey:UserID"`
 }
-type Chat struct {
-	Model
-	ChatID   uuid.UUID `gorm:"uniqueIndex;not null"`
-	Title    string    `gorm:"size:255"`
-	Messages []Message `gorm:"foreignKey:ChatID"`
-	Users    []User    `gorm:"foreignKey:ChatID"`
-}
+
 type ChatUser struct {
 	Model
-	ChatID    uuid.UUID `gorm:"uniqueIndex;not null"`
-	UserID    uuid.UUID `gorm:"uniqueIndex;not null"`
+	ChatID    uuid.UUID
+	UserID    uuid.UUID
 	CreatedAt time.Time `gorm:"autoCreateTime"`
 }
+
 type Message struct {
 	Model
 	MessageID int       `gorm:"uniqueIndex:idx_message_unique,priority:1;not null"`
 	UserID    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:2;not null"`
-	ChatId    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:3;not null"`
+	ChatID    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:3;not null"`
 	Content   string    `gorm:"type:text"`
 	MediaURL  string    `gorm:"type:text"`
 }

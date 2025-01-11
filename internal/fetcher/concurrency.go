@@ -45,8 +45,9 @@ func (f *Fetcher) handleMeJob(job MeJob) error {
 	job.MediaURL = mediaURL
 
 	err = f.database.Conn.Model(&db.Message{}).
-		Where("telegram_message_id = ?", job.MessageID).
+		Where("message_id = ?", job.MessageID).
 		Update("media_url", mediaURL).Error
+
 	if err != nil {
 		return fmt.Errorf("update database with media URL: %w", err)
 	}
