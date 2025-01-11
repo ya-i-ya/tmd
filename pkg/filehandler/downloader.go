@@ -23,8 +23,12 @@ func NewDownloader(client *telegram.Client, baseDir string) *Downloader {
 		organizer: NewOrganizer(baseDir),
 	}
 }
-
-func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.MessageMediaClass, chatID int) error {
+func (d *Downloader) ProcessMedia(
+	ctx context.Context,
+	messageID int,
+	media tg.MessageMediaClass,
+	chatID int64,
+) (string, error) {
 	switch m := media.(type) {
 	case *tg.MessageMediaPhoto:
 		return d.DownloadPhoto(ctx, messageID, m, chatID)
@@ -35,11 +39,11 @@ func (d *Downloader) ProcessMedia(ctx context.Context, messageID int, media tg.M
 			Str("media_type", fmt.Sprintf("%T", m)).
 			Int("message_id", messageID).
 			Msg("Unsupported media type")
-		return nil
+		return "", nil
 	}
 }
 
-func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg.MessageMediaPhoto, chatID int) error {
+func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg.MessageMediaPhoto, chatID int64) (string, error) {
 	log.Info().
 		Int("message_id", messageID).
 		Str("media_type", "photo").
@@ -48,17 +52,17 @@ func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg
 	photo := media.Photo
 	if photo == nil {
 		log.Warn().Int("message_id", messageID).Msg("Skipping empty photo")
-		return nil
+		return "", nil
 	}
 	photoObj, ok := photo.(*tg.Photo)
 	if !ok {
 		log.Warn().Int("message_id", messageID).Msg("Photo object is not a valid *tg.Photo")
-		return nil
+		return "", nil
 	}
 	sizes := photoObj.Sizes
 	if len(sizes) == 0 {
 		log.Warn().Int("message_id", messageID).Msg("No photo sizes found")
-		return nil
+		return "", nil
 	}
 	var chosen *tg.PhotoSize
 	for i := len(sizes) - 1; i >= 0; i-- {
@@ -70,8 +74,8 @@ func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg
 	if chosen == nil {
 		log.Warn().
 			Int("message_id", messageID).
-			Msg("Last photo size is not a *tg.PhotoSize, skipping download")
-		return nil
+			Msg("No suitable photo size found")
+		return "", nil
 	}
 	location := &tg.InputPhotoFileLocation{
 		ID:            photoObj.ID,
@@ -80,23 +84,24 @@ func (d *Downloader) DownloadPhoto(ctx context.Context, messageID int, media *tg
 		ThumbSize:     chosen.Type,
 	}
 	dl := downloader.NewDownloader().WithPartSize(512 * 1024)
+
 	mimeType := "image/jpeg"
 	path, err := d.organizer.getFilePath(mimeType, chatID, messageID)
 	if err != nil {
-		return fmt.Errorf("failed to get path: %w", err)
+		return "", fmt.Errorf("failed to get path: %w", err)
 	}
 	_, err = dl.Download(d.client.API(), location).ToPath(ctx, path)
 	if err != nil {
-		return fmt.Errorf("failed to download photo: %w", err)
+		return "", fmt.Errorf("failed to download photo: %w", err)
 	}
 	log.Info().
 		Str("file_path", path).
 		Int("message_id", messageID).
 		Msg("Downloaded and saved photo successfully")
-	return nil
+	return path, nil
 }
 
-func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media *tg.MessageMediaDocument, chatID int) error {
+func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media *tg.MessageMediaDocument, chatID int64) (string, error) {
 	log.Info().
 		Int("message_id", messageID).
 		Str("media_type", "document").
@@ -105,13 +110,13 @@ func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media 
 	doc := media.Document
 	if doc == nil {
 		log.Warn().Int("message_id", messageID).Msg("Skipping empty document")
-		return nil
+		return "", nil
 	}
 
 	docObj, ok := doc.(*tg.Document)
 	if !ok {
 		log.Warn().Int("message_id", messageID).Msg("Document object is not a valid *tg.Document")
-		return nil
+		return "", nil
 	}
 
 	location := &tg.InputDocumentFileLocation{
@@ -130,15 +135,15 @@ func (d *Downloader) DownloadDocument(ctx context.Context, messageID int, media 
 
 	path, err := d.organizer.getFilePath(mimeType, chatID, messageID)
 	if err != nil {
-		return fmt.Errorf("failed to get path: %w", err)
+		return "", fmt.Errorf("failed to get path: %w", err)
 	}
 	_, err = dl.Download(d.client.API(), location).ToPath(ctx, path)
 	if err != nil {
-		return fmt.Errorf("failed to download document: %w", err)
+		return "", fmt.Errorf("failed to download document: %w", err)
 	}
 	log.Info().
 		Str("file_path", path).
 		Int("message_id", messageID).
 		Msg("Downloaded and saved document successfully")
-	return nil
+	return path, nil
 }
