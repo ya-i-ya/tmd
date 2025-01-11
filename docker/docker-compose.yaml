@@ -35,7 +35,7 @@ services:
       - minio
     entrypoint: >
       sh -c "
-      /usr/bin/mc config host add localminio http://minio:9000 ${MINIO_USER:-minioadmin} ${MINIO_PWD:-minioadmin};
+      /usr/bin/mc config host add localminio http://minio:9000 ${MINIO_USER:-localuser} ${MINIO_PWD:-localpass};
       /usr/bin/mc mb localminio/tmd;
       /usr/bin/mc anonymous set download localminio/tmd;
       /usr/bin/mc ls localminio;

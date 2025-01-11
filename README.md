@@ -1,27 +1,10 @@
 
-    Application Core Layer (Auth/Session Management)
-Manages the overall flow and holds user credentials (phone, API ID, API Hash).
-Responsible for session token storage, two-factor authentication (2FA), etc.
+- **Telegram**: The app authenticates via phone number and optionally 2FA.
+- **Media Downloads**: Files (photos, documents, audio, etc.) are fetched and saved locally.
+- **MinIO Upload**: Local files are uploaded to MinIO for off-box storage, and a link is stored in the database.
+- **Postgres Database**: Stores message data, including references to the media in MinIO.
 
-    User Input / CLI  
-If needed, prompts user for verification code (when 2FA or sign-in is required).
+## Prerequisites
 
-    Peer Resolver      
-Given a username or chat ID, resolves it to the actual internal peer
-
-    Message Fetcher
-Queries Telegram’s history for the target chat in batches (offset-based) or in real-time (updates).
-Passes each message to the Media Extractor.
-
-    Media Extractor                                          
-Analyzes each message for attachments                     
-Returns file info to File Downloader
-
-    File Downloader
-Downloads attached from Telegram servers;
-provides local path/direct write
-tgc Downloader.Download()
-
-    Local Storage Mgr
-Creates /tpm/*folders*, renames, saves final files,
-
+1. **Telegram API credentials** (phone number, API ID, API hash). Obtain them at [my.telegram.org](https://my.telegram.org/) if you haven’t already.
+2. **Docker**: Docker & Docker Compose, for MinIO and postgres DB.
