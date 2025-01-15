@@ -3,27 +3,25 @@ package fetcher
 import (
 	"context"
 	"fmt"
+
 	"tmd/internal/db"
+	"tmd/pkg/filehandler"
 
 	"github.com/gotd/td/tg"
 	"github.com/rs/zerolog/log"
-	"tmd/pkg/filehandler"
 )
 
 type MeJob struct {
 	MessageID      int
 	TelegramUserID int64
-	ChatID         int64
 	Media          tg.MessageMediaClass
-	MediaFilePath  string
-	MediaURL       string
+	DialogName     string
 }
 
 func (f *Fetcher) workerMeJob() {
 	defer f.wg.Done()
 	for job := range f.meChan {
-		err := f.handleMeJob(job)
-		if err != nil {
+		if err := f.handleMeJob(job); err != nil {
 			log.Error().
 				Err(err).
 				Int("message_id", job.MessageID).
@@ -38,17 +36,21 @@ func (f *Fetcher) handleMeJob(job MeJob) error {
 		return fmt.Errorf("determine MIME type: %w", err)
 	}
 
-	mediaURL, err := f.storage.StoreFile(context.Background(), job.MediaFilePath, mimeType)
+	data, err := f.downloader.DownloadMediaToMemory(context.Background(), job.Media)
+	if err != nil {
+		return fmt.Errorf("download from Telegram to memory: %w", err)
+	}
+
+	objectName := filehandler.BuildObjectName(job.DialogName, mimeType, job.MessageID)
+
+	mediaURL, err := f.storage.StoreBytes(context.Background(), data, mimeType, objectName)
 	if err != nil {
 		return fmt.Errorf("upload to MinIO: %w", err)
 	}
-	job.MediaURL = mediaURL
 
-	err = f.database.Conn.Model(&db.Message{}).
+	if err := f.database.Conn.Model(&db.Message{}).
 		Where("message_id = ?", job.MessageID).
-		Update("media_url", mediaURL).Error
-
-	if err != nil {
+		Update("media_url", mediaURL).Error; err != nil {
 		return fmt.Errorf("update database with media URL: %w", err)
 	}
 
@@ -56,6 +58,5 @@ func (f *Fetcher) handleMeJob(job MeJob) error {
 		Int("message_id", job.MessageID).
 		Str("media_url", mediaURL).
 		Msg("Media uploaded to MinIO and database updated")
-
 	return nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, chatID int64) error {
+func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, dialogName string) error {
 	tgClient := tg.NewClient(f.client)
 	offsetID := 0
 
@@ -27,7 +27,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -38,7 +38,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -49,7 +49,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, chatID); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
 				return err
 			}
 			return nil
@@ -67,7 +67,7 @@ func (f *Fetcher) processMessagesBatch(
 	ctx context.Context,
 	messages []tg.MessageClass,
 	offsetID *int,
-	chatID int64,
+	dialogName string,
 ) error {
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
@@ -84,15 +84,6 @@ func (f *Fetcher) processMessagesBatch(
 			Msg("Processing message")
 
 		if m.Media != nil {
-			localPath, err := f.downloader.ProcessMedia(ctx, m.ID, m.Media, chatID)
-			if err != nil {
-				log.Error().
-					Err(err).
-					Int("message_id", m.ID).
-					Msg("Failed to process media for message")
-				continue
-			}
-
 			userID, ok := peerUserID(m.FromID)
 			if !ok {
 				userID = 0
@@ -101,9 +92,8 @@ func (f *Fetcher) processMessagesBatch(
 			job := MeJob{
 				MessageID:      m.ID,
 				TelegramUserID: userID,
-				ChatID:         chatID,
 				Media:          m.Media,
-				MediaFilePath:  localPath,
+				DialogName:     dialogName,
 			}
 			f.meChan <- job
 		}

@@ -1,10 +1,9 @@
 package minio
 
 import (
+	"bytes"
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -22,7 +21,6 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucket, basePath string, us
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
 	})
-
 	if err != nil {
 		return nil, fmt.Errorf("minio new client: %w", err)
 	}
@@ -34,40 +32,23 @@ func NewMinIOStorage(endpoint, accessKey, secretKey, bucket, basePath string, us
 	}, nil
 }
 
-func (m *Storage) StoreFile(ctx context.Context, localPath, mimeType string) (string, error) {
-	f, err := os.Open(localPath)
-	if err != nil {
-		return "", fmt.Errorf("open file for minio upload: %w", err)
-	}
-	defer func(f *os.File) {
-		err := f.Close()
-		if err != nil {
-
-		}
-	}(f)
-
-	fileName := filepath.Base(localPath)
-	objectName := fileName
-	if m.basePath != "" {
-		objectName = filepath.Join(m.basePath, fileName)
-	}
-
+func (m *Storage) StoreBytes(ctx context.Context, data []byte, mimeType, objectName string) (string, error) {
 	log.Info().
 		Str("bucket", m.bucket).
 		Str("objectName", objectName).
-		Msg("Uploading file to MinIO")
+		Msg("Uploading memory data to MinIO")
 
-	contentType := mimeType
-
-	_, err = m.client.PutObject(
+	reader := bytes.NewReader(data)
+	_, err := m.client.PutObject(
 		ctx,
 		m.bucket,
 		objectName,
-		f,
-		-1,
-		minio.PutObjectOptions{ContentType: contentType},
+		reader,
+		int64(len(data)),
+		minio.PutObjectOptions{
+			ContentType: mimeType,
+		},
 	)
-
 	if err != nil {
 		return "", fmt.Errorf("minio put object: %w", err)
 	}

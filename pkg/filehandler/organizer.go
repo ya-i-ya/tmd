@@ -16,9 +16,9 @@ func NewOrganizer(baseDir string) *Organizer {
 	return &Organizer{BaseDir: baseDir}
 }
 
-func (o *Organizer) getDirPath(mimeType string, chatID int64) (string, error) {
+func (o *Organizer) getDirPath(mimeType string, dialogName string) (string, error) {
 	mimeDir := strings.TrimRight(mimeType, "/")
-	dirPath := filepath.Join(o.BaseDir, fmt.Sprintf("%d", chatID), mimeDir)
+	dirPath := filepath.Join(o.BaseDir, fmt.Sprintf("%s", dialogName), mimeDir)
 	if err := ensureDir(dirPath); err != nil {
 		return "", err
 	}
@@ -29,13 +29,13 @@ func (o *Organizer) getDirPath(mimeType string, chatID int64) (string, error) {
 	return dirPath, nil
 }
 
-func (o *Organizer) getFilePath(mimeType string, chatID int64, mediaID int) (string, error) {
+func (o *Organizer) getFilePath(mimeType, dialogName string) (string, error) {
 	extension := getFileExtension(mimeType)
-	dirPath, err := o.getDirPath(mimeType, chatID)
+	dirPath, err := o.getDirPath(dialogName, mimeType)
 	if err != nil {
 		return "", err
 	}
-	fileName := fmt.Sprintf("%d%s", mediaID, extension)
+	fileName := fmt.Sprintf("%s%s", dialogName, extension)
 	fullPath := filepath.Join(dirPath, fileName)
 
 	log.Info().

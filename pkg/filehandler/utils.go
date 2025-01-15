@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"github.com/gotd/td/tg"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 )
@@ -30,11 +32,11 @@ func getFileExtension(mimeType string) string {
 		return ".dat"
 	}
 }
+
 func GetMimeType(media tg.MessageMediaClass) (string, error) {
 	switch m := media.(type) {
 	case *tg.MessageMediaPhoto:
 		return "image/jpeg", nil
-
 	case *tg.MessageMediaDocument:
 		docObj, ok := m.Document.(*tg.Document)
 		if !ok || docObj == nil {
@@ -44,7 +46,6 @@ func GetMimeType(media tg.MessageMediaClass) (string, error) {
 			return docObj.MimeType, nil
 		}
 		return "application/octet-stream", nil
-
 	default:
 		return "", fmt.Errorf("unsupported media type: %T", m)
 	}
@@ -63,4 +64,18 @@ func ensureDir(path string) error {
 		Str("path", path).
 		Msg("Directory ensured")
 	return nil
+}
+
+func BuildObjectName(dialogName, mimeType string, messageID int) string {
+	mimeDir := firstSegmentOfMime(mimeType)
+	ext := getFileExtension(mimeType)
+	fileName := fmt.Sprintf("%d%s", messageID, ext)
+	return filepath.ToSlash(filepath.Join(dialogName, mimeDir, fileName))
+}
+
+func firstSegmentOfMime(mime string) string {
+	if idx := strings.IndexRune(mime, '/'); idx > 0 {
+		return mime[:idx]
+	}
+	return mime
 }

@@ -77,8 +77,13 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 			UserID:     user.ID,
 			AccessHash: user.AccessHash,
 		}
-		chatID := user.ID
-		return f.FetchAndProcessMessages(ctx, inputPeer, chatID)
+
+		dialogName := user.Username
+		if dialogName == "" {
+			dialogName = fmt.Sprintf("user%d", user.ID)
+		}
+
+		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
 
 	default:
 		log.Warn().
