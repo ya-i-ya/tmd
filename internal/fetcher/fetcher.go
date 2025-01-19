@@ -2,9 +2,9 @@ package fetcher
 
 import (
 	"sync"
+	"tmd/pkg/minio"
 
 	"tmd/internal/db"
-	"tmd/minio"
 	"tmd/pkg/filehandler"
 
 	"github.com/gotd/td/telegram"

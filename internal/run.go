@@ -3,10 +3,10 @@ package internal
 import (
 	"context"
 	"time"
+	"tmd/pkg/minio"
 
 	"tmd/internal/db"
 	"tmd/internal/fetcher"
-	"tmd/minio"
 	"tmd/pkg/cfg"
 	"tmd/pkg/filehandler"
 	"tmd/pkg/logger"

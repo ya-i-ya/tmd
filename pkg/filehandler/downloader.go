@@ -82,6 +82,7 @@ func (d *Downloader) downloadDocumentToMemory(ctx context.Context, media *tg.Mes
 		log.Warn().Msg("Skipping empty document")
 		return nil, nil
 	}
+
 	docObj, ok := doc.(*tg.Document)
 	if !ok || docObj == nil {
 		log.Warn().Msg("Document object is invalid")
