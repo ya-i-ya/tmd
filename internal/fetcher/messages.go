@@ -88,7 +88,6 @@ func (f *Fetcher) processMessagesBatch(
 			if !ok {
 				userID = 0
 			}
-
 			job := MeJob{
 				MessageID:      m.ID,
 				TelegramUserID: userID,

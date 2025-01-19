@@ -54,6 +54,7 @@ func (d *Downloader) downloadPhotoToMemory(ctx context.Context, media *tg.Messag
 			break
 		}
 	}
+
 	if chosenThumb == nil {
 		log.Warn().Msg("No suitable photo size found")
 		return nil, nil
@@ -66,7 +67,7 @@ func (d *Downloader) downloadPhotoToMemory(ctx context.Context, media *tg.Messag
 		ThumbSize:     chosenThumb.Type,
 	}
 
-	dl := downloader.NewDownloader().WithPartSize(512 * 1024)
+	dl := downloader.NewDownloader().WithPartSize(1024 * 1024)
 
 	var buffer bytes.Buffer
 	if _, err := dl.Download(d.client.API(), location).Stream(ctx, &buffer); err != nil {

@@ -6,16 +6,16 @@ import (
 	"time"
 )
 
-type Chat struct {
-	ChatID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Title    string    `gorm:"size:255"`
-	Messages []Message `gorm:"foreignKey:ChatID;references:ChatID"`
-}
-
 type Model struct {
 	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type Chat struct {
+	ChatID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	Title    string    `gorm:"size:255"`
+	Messages []Message `gorm:"foreignKey:ChatID;references:ChatID"`
 }
 
 func (m *Model) BeforeCreate(db *gorm.DB) (err error) {
@@ -36,9 +36,10 @@ type User struct {
 
 type ChatUser struct {
 	Model
-	ChatID    uuid.UUID
-	UserID    uuid.UUID
-	CreatedAt time.Time `gorm:"autoCreateTime"`
+	ChatID     uuid.UUID
+	UserID     uuid.UUID
+	dialogName string
+	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 
 type Message struct {

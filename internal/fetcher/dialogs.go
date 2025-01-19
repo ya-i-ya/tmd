@@ -73,24 +73,60 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 			log.Warn().Int64("user_id", peer.UserID).Msg("User not found for peer ID")
 			return nil
 		}
-		inputPeer := &tg.InputPeerUser{
-			UserID:     user.ID,
-			AccessHash: user.AccessHash,
-		}
 
 		dialogName := user.Username
 		if dialogName == "" {
 			dialogName = fmt.Sprintf("user%d", user.ID)
 		}
 
-		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
+		inputPeer := &tg.InputPeerUser{
+			UserID:     user.ID,
+			AccessHash: user.AccessHash,
+		}
 
+		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
+	case *tg.PeerChat:
+		chatID := peer.ChatID
+
+		tgClient := tg.NewClient(f.client)
+		resp, err := tgClient.MessagesGetChats(ctx, []int64{chatID})
+		if err != nil {
+			return fmt.Errorf("failed to get chats for chatID=%d: %w", chatID, err)
+		}
+
+		chatResp, ok := resp.(*tg.MessagesChats)
+		if !ok {
+			return fmt.Errorf("unexpected response type: %T", resp)
+		}
+
+		dialogName := ""
+		if c, ok := findChat(chatResp, chatID); ok && c.Title != "" {
+			dialogName = c.Title
+		} else {
+			dialogName = fmt.Sprintf("chat%d", chatID)
+		}
+
+		inputPeer := &tg.InputPeerChat{
+			ChatID: chatID,
+		}
+		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
 	default:
 		log.Warn().
 			Str("peer_type", fmt.Sprintf("%T", peer)).
 			Msg("Unsupported peer type")
 		return nil
 	}
+}
+
+func findChat(res *tg.MessagesChats, chatID int64) (*tg.Chat, bool) {
+	for _, c := range res.Chats {
+		if chatObj, ok := c.(*tg.Chat); ok {
+			if chatObj.ID == chatID {
+				return chatObj, true
+			}
+		}
+	}
+	return nil, false
 }
 
 func (f *Fetcher) getNextOffsetPeer(dialog tg.DialogClass) tg.InputPeerClass {
