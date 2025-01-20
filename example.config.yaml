@@ -1,4 +1,3 @@
-
 telegram:
   phone_number: "+1234567890"          # Your Telegram phone number in international format
   api_id: 123456                        # Your Telegram API ID (integer)
@@ -6,7 +5,7 @@ telegram:
   password: "your_2FA_password"         # Your Telegram account password (if 2FA is enabled)
 
 download:
-  base_dir: "/path/to/download/directory"  # Absolute or relative path where media will be downloaded
+  base_dir: "tmd"  # Absolute or relative path where media will be downloaded
 
 logging:
   filename: "app.logger"       # Log file name (can include path)
