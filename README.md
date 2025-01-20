@@ -5,7 +5,13 @@
 - **Postgres**: Holds all message and media references.
 - **MinIO**: Stores files (photos, documents, audio).
 - **Docker Compose**: Provides out-of-the-box containers for Postgres & MinIO.
+---
 
+## Prerequisites
+
+1. **Go** (1.19+ recommended)
+2. **Docker** & **Docker Compose**
+3. **Telegram** account with API credentials from [my.telegram.org](https://my.telegram.org/).
 ---
 
 ## Configuration
@@ -19,16 +25,7 @@ Please open it and edit the following sections to match your environment:
 - **`fetching`**: Dialog/message limits.
 - **`minio`**: Host, credentials, bucket name, SSL usage.
 - **`database`**: Postgres connection details (host, port, user, password, database name).
-- 
 - **`rename example.config.yaml to config.yaml`**
----
-
-## Prerequisites
-
-1. **Go** (1.19+ recommended)
-2. **Docker** & **Docker Compose**
-3. **Telegram** account with API credentials from [my.telegram.org](https://my.telegram.org/).
-
 ---
 
 ## Getting Started
