@@ -1,10 +1,38 @@
 
-- **Telegram**: The app authenticates via phone number and optionally 2FA.
-- **Media Downloads**: Files (photos, documents, audio, etc.) are fetched and saved locally.
-- **MinIO Upload**: Local files are uploaded to MinIO for off-box storage, and a link is stored in the database.
-- **Postgres Database**: Stores message data, including references to the media in MinIO.
+## Quick Overview
+
+- **Telegram**: Authenticates via phone number (and optional 2FA).
+- **Postgres**: Holds all message and media references.
+- **MinIO**: Stores files (photos, documents, audio).
+- **Docker Compose**: Provides out-of-the-box containers for Postgres & MinIO.
+
+---
+
+## Configuration
+
+All **instructions** and **fields** are already documented in [`config.yaml`](./config.yaml).  
+Please open it and edit the following sections to match your environment:
+
+- **`telegram`**: Phone number, `api_id`, `api_hash`, and optional `password` for 2FA.
+- **`download`**: Where media is temporarily saved locally before uploading to MinIO.
+- **`logging`**: Path for logs, file rotation, log level, etc.
+- **`fetching`**: Dialog/message limits.
+- **`minio`**: Host, credentials, bucket name, SSL usage.
+- **`database`**: Postgres connection details (host, port, user, password, database name).
+
+---
 
 ## Prerequisites
 
-1. **Telegram API credentials** (phone number, API ID, API hash). Obtain them at [my.telegram.org](https://my.telegram.org/) if you haven’t already.
-2. **Docker**: Docker & Docker Compose, for MinIO and postgres DB.
+1. **Go** (1.19+ recommended)
+2. **Docker** & **Docker Compose**
+3. **Telegram** account with API credentials from [my.telegram.org](https://my.telegram.org/).
+
+---
+
+## Getting Started
+
+1. **Spin up Postgres & MinIO** via Docker:
+   ```bash
+   cd docker
+   docker-compose up -d
