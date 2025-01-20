@@ -33,6 +33,6 @@ Please open it and edit the following sections to match your environment:
 ## Getting Started
 
 1. **Spin up Postgres & MinIO** via Docker:
-   ```bash
+
    cd docker
    docker-compose up -d
