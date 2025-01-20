@@ -10,16 +10,17 @@
 
 ## Configuration
 
-All **instructions** and **fields** are already documented in [`config.yaml`](./config.yaml).  
+All **instructions** and **fields** are already documented in [`example.config.yaml`](./example.config.yaml).  
 Please open it and edit the following sections to match your environment:
 
 - **`telegram`**: Phone number, `api_id`, `api_hash`, and optional `password` for 2FA.
-- **`download`**: Where media is temporarily saved locally before uploading to MinIO.
+- **`download`**: Where media is temporarily loaded to ram before uploading to MinIO.
 - **`logging`**: Path for logs, file rotation, log level, etc.
 - **`fetching`**: Dialog/message limits.
 - **`minio`**: Host, credentials, bucket name, SSL usage.
 - **`database`**: Postgres connection details (host, port, user, password, database name).
-
+- 
+- **`rename example.config.yaml to config.yaml`**
 ---
 
 ## Prerequisites
