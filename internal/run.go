@@ -2,6 +2,7 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"time"
 	"tmd/pkg/minio"
 
@@ -65,6 +66,12 @@ func Run() error {
 		if err := EnsureAuth(ctx, client, config); err != nil {
 			return err
 		}
+
+		self, err := client.Self(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get self user: %w", err)
+		}
+		f.SetMyUserID(self.ID)
 		log.Info().Msg("Client is authorized and ready!")
 
 		go func() {

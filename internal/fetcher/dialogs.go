@@ -66,12 +66,35 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 		return nil
 	}
 
+	tgClient := tg.NewClient(f.client)
+
 	switch peer := d.Peer.(type) {
 	case *tg.PeerUser:
-		user, found := findUser(users, peer.UserID)
-		if !found {
-			log.Warn().Int64("user_id", peer.UserID).Msg("User not found for peer ID")
+		if peer.UserID == f.myUserID {
+			log.Debug().Msg("Skipping self-dialog")
 			return nil
+		}
+
+		user, found := findUser(users, peer.UserID)
+
+		if !found {
+			inputUser := &tg.InputUser{
+				UserID:     peer.UserID,
+				AccessHash: 0,
+			}
+			users, err := tgClient.UsersGetUsers(ctx, []tg.InputUserClass{inputUser})
+			if err != nil || len(users) == 0 {
+				log.Warn().
+					Int64("user_id", peer.UserID).
+					Msg("Failed to fetch user info")
+				return nil
+			}
+
+			userObj, ok := users[0].(*tg.User)
+			if !ok {
+				return fmt.Errorf("unexpected user type %T", users[0])
+			}
+			user = userObj
 		}
 
 		dialogName := user.Username

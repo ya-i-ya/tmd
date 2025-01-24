@@ -17,9 +17,9 @@ type Fetcher struct {
 	storage       *minio.Storage
 	dialogsLimit  int
 	messagesLimit int
-
-	meChan chan MeJob
-	wg     sync.WaitGroup
+	myUserID      int64
+	meChan        chan MeJob
+	wg            sync.WaitGroup
 }
 
 func NewFetcher(client *telegram.Client,
@@ -47,6 +47,9 @@ func NewFetcher(client *telegram.Client,
 	return f
 }
 
+func (f *Fetcher) SetMyUserID(id int64) {
+	f.myUserID = id
+}
 func (f *Fetcher) CloseWorkers() {
 	close(f.meChan)
 	f.wg.Wait()

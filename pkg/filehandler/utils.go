@@ -67,10 +67,12 @@ func ensureDir(path string) error {
 }
 
 func BuildObjectName(dialogName, mimeType string, messageID int) string {
+	cleanName := strings.ReplaceAll(dialogName, "/", "-")
 	mimeDir := firstSegmentOfMime(mimeType)
 	ext := getFileExtension(mimeType)
 	fileName := fmt.Sprintf("%d%s", messageID, ext)
-	return filepath.ToSlash(filepath.Join(dialogName, mimeDir, fileName))
+
+	return filepath.ToSlash(filepath.Join(cleanName, mimeDir, fileName))
 }
 
 func firstSegmentOfMime(mime string) string {

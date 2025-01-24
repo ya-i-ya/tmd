@@ -38,7 +38,7 @@ type ChatUser struct {
 	Model
 	ChatID     uuid.UUID
 	UserID     uuid.UUID
-	dialogName string
+	DialogName string    `gorm:"size:255"`
 	CreatedAt  time.Time `gorm:"autoCreateTime"`
 }
 
