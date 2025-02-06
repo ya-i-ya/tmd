@@ -13,9 +13,10 @@ type Model struct {
 }
 
 type Chat struct {
+	Model
 	ChatID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
 	Title    string    `gorm:"size:255"`
-	Messages []Message `gorm:"foreignKey:ChatID;references:ChatID"`
+	Messages []Message `gorm:"foreignKey:ChatID;references:ID"`
 }
 
 func (m *Model) BeforeCreate(db *gorm.DB) (err error) {
@@ -49,4 +50,5 @@ type Message struct {
 	ChatID    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:3;not null"`
 	Content   string    `gorm:"type:text"`
 	MediaURL  string    `gorm:"type:text"`
+	User      *User     `gorm:"foreignKey:UserID"`
 }
