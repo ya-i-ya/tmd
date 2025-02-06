@@ -1,6 +1,7 @@
 package web
 
 import (
+	"github.com/google/uuid"
 	"net/http"
 	"path/filepath"
 	"strconv"
@@ -32,8 +33,38 @@ type MessageResponse struct {
 	CreatedAt string `json:"created_at"`
 	Username  string `json:"username"`
 }
+type ChatResponse struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	CreatedAt string `json:"created_at"`
+}
 
-func (h *Handler) GetMessages(ctx *gin.Context) {
+func (h *Handler) GetChats(c *gin.Context) {
+	var chats []db.Chat
+	result := h.DB.Conn.Order("created_at DESC").Find(&chats)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	response := make([]ChatResponse, len(chats))
+	for i, chat := range chats {
+		response[i] = ChatResponse{
+			ID:        chat.ID.String(),
+			Title:     chat.Title,
+			CreatedAt: chat.CreatedAt.Format(time.RFC3339),
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{"data": response})
+}
+
+func (h *Handler) GetChatMessages(ctx *gin.Context) {
+	chatIDstr := ctx.Param("chatID")
+	chatUUID, err := uuid.Parse(chatIDstr)
+	if err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid chat id"})
+		return
+	}
 	page, err := strconv.Atoi(ctx.DefaultQuery("page", "1"))
 	if err != nil || page < 1 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid page number"})
@@ -41,13 +72,14 @@ func (h *Handler) GetMessages(ctx *gin.Context) {
 	}
 
 	offset := (page - 1) * h.PageLimit
+
 	var messages []db.Message
 	var total int64
 
-	h.DB.Conn.Model(&db.Message{}).Count(&total)
-
+	h.DB.Conn.Model(&db.Message{}).Count(&total).Where("chat_id = ?", chatUUID).Count(&total)
 	result := h.DB.Conn.
 		Preload("User").
+		Where("chat_id = ?", chatUUID).
 		Order("created_at DESC").
 		Limit(h.PageLimit).
 		Offset(offset).
@@ -102,27 +134,4 @@ func (h *Handler) GetFile(c *gin.Context) {
 
 func isValidObjectName(name string) bool {
 	return filepath.Base(name) == name && !filepath.IsAbs(name)
-}
-
-func (h *Handler) GetChats(c *gin.Context) {
-	var chats []db.Chat
-	result := h.DB.Conn.Order("created_at DESC").Find(&chats)
-	if result.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
-		return
-	}
-	type ChatResponse struct {
-		ID        string `json:"id"`
-		Title     string `json:"title"`
-		CreatedAt string `json:"created_at"`
-	}
-	response := make([]ChatResponse, len(chats))
-	for i, chat := range chats {
-		response[i] = ChatResponse{
-			ID:        chat.ID.String(),
-			Title:     chat.Title,
-			CreatedAt: chat.CreatedAt.Format(time.RFC3339),
-		}
-	}
-	c.JSON(http.StatusOK, gin.H{"data": response})
 }
