@@ -71,21 +71,29 @@ func (h *Handler) GetChatMessages(ctx *gin.Context) {
 		return
 	}
 
+	mediaType := ctx.Query("media_type")
 	offset := (page - 1) * h.PageLimit
 
 	var messages []db.Message
 	var total int64
 
-	h.DB.Conn.Model(&db.Message{}).Count(&total).Where("chat_id = ?", chatUUID).Count(&total)
-	result := h.DB.Conn.
+	query := h.DB.Conn.Model(&db.Message{}).Where("chat_id = ?", chatUUID)
+
+	if mediaType != "" && mediaType != "all" {
+		query = query.Where("message_type = ?", mediaType)
+	}
+
+	if err := query.Count(&total).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
+		return
+	}
+
+	if err := query.
 		Preload("User").
-		Where("chat_id = ?", chatUUID).
 		Order("created_at DESC").
 		Limit(h.PageLimit).
 		Offset(offset).
-		Find(&messages)
-
-	if result.Error != nil {
+		Find(&messages).Error; err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Database error"})
 		return
 	}
