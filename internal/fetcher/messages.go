@@ -2,13 +2,17 @@ package fetcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"github.com/google/uuid"
+	"gorm.io/gorm"
+	"tmd/internal/db"
 
 	"github.com/gotd/td/tg"
 	"github.com/rs/zerolog/log"
 )
 
-func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, dialogName string) error {
+func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeerClass, dialogName string, chatUUID uuid.UUID) error {
 	tgClient := tg.NewClient(f.client)
 	offsetID := 0
 
@@ -27,7 +31,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -38,7 +42,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -49,7 +53,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName); err != nil {
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
 				return err
 			}
 			return nil
@@ -68,6 +72,7 @@ func (f *Fetcher) processMessagesBatch(
 	messages []tg.MessageClass,
 	offsetID *int,
 	dialogName string,
+	chatUUID uuid.UUID,
 ) error {
 	for _, msg := range messages {
 		m, ok := msg.(*tg.Message)
@@ -83,14 +88,53 @@ func (f *Fetcher) processMessagesBatch(
 			Str("content", m.Message).
 			Msg("Processing message")
 
-		if m.Media != nil {
-			userID, ok := peerUserID(m.FromID)
-			if !ok {
-				userID = 0
+		senderUserID, _ := peerUserID(m.FromID)
+		var userRecord db.User
+		if senderUserID != 0 {
+			err := f.database.Conn.Where("telegram_user_id = ?", senderUserID).First(&userRecord).Error
+			if err != nil {
+				if errors.Is(err, gorm.ErrRecordNotFound) {
+					userRecord = db.User{
+						TelegramUserID: senderUserID,
+						Username:       fmt.Sprintf("user%d", senderUserID),
+					}
+					if errCreate := f.database.Conn.Create(&userRecord).Error; errCreate != nil {
+						log.Error().Err(errCreate).Msg("Failed to create user record")
+					}
+				} else {
+					log.Error().Err(err).Msg("Failed to query user record")
+				}
 			}
+		}
+
+		msgType := "text"
+		if m.Media != nil {
+			switch m.Media.(type) {
+			case *tg.MessageMediaPhoto:
+				msgType = "photo"
+			case *tg.MessageMediaDocument:
+				msgType = "document"
+			}
+		}
+
+		messageRecord := db.Message{
+			MessageID:   m.ID,
+			ChatID:      chatUUID,
+			UserID:      userRecord.ID,
+			Content:     m.Message,
+			MessageType: msgType,
+		}
+
+		if err := f.database.Conn.
+			Where("message_id = ? AND chat_id = ?", m.ID, chatUUID).
+			FirstOrCreate(&messageRecord).Error; err != nil {
+			log.Error().Err(err).Msg("Failed to create/find message record")
+		}
+
+		if m.Media != nil {
 			job := MeJob{
 				MessageID:      m.ID,
-				TelegramUserID: userID,
+				TelegramUserID: senderUserID,
 				Media:          m.Media,
 				DialogName:     dialogName,
 			}
