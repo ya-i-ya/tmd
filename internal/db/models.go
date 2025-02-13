@@ -14,9 +14,9 @@ type Model struct {
 
 type Chat struct {
 	Model
-	ChatID   uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	Title    string    `gorm:"size:255"`
-	Messages []Message `gorm:"foreignKey:ChatID;references:ID"`
+	TelegramID int64     `gorm:"uniqueIndex;not null"`
+	Title      string    `gorm:"size:255"`
+	Messages   []Message `gorm:"foreignKey:ChatID;references:ID"`
 }
 
 func (m *Model) BeforeCreate(db *gorm.DB) (err error) {
@@ -45,10 +45,11 @@ type ChatUser struct {
 
 type Message struct {
 	Model
-	MessageID int       `gorm:"uniqueIndex:idx_message_unique,priority:1;not null"`
-	UserID    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:2;not null"`
-	ChatID    uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:3;not null"`
-	Content   string    `gorm:"type:text"`
-	MediaURL  string    `gorm:"type:text"`
-	User      *User     `gorm:"foreignKey:UserID"`
+	MessageID   int       `gorm:"uniqueIndex:idx_message_unique,priority:1;not null"`
+	UserID      uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:2;not null"`
+	ChatID      uuid.UUID `gorm:"uniqueIndex:idx_message_unique,priority:3;not null"`
+	MessageType string    `gorm:"size:50"`
+	Content     string    `gorm:"type:text"`
+	MediaURL    string    `gorm:"type:text"`
+	User        *User     `gorm:"foreignKey:UserID"`
 }
