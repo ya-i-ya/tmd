@@ -7,18 +7,24 @@ import (
 	"github.com/ulule/limiter/v3"
 	mgin "github.com/ulule/limiter/v3/drivers/middleware/gin"
 	"github.com/ulule/limiter/v3/drivers/store/memory"
+	"log"
 )
 
 func SetupRouter(handler *Handler) *gin.Engine {
-	r := gin.Default()
+	r := gin.New()
+	r.Use(gin.Recovery())
 
-	rate, _ := limiter.NewRateFromFormatted("100-M")
-	rateMiddleware := mgin.NewMiddleware(limiter.New(memory.NewStore(), rate))
+	rate, err := limiter.NewRateFromFormatted("100-M")
+	if err != nil {
+		log.Fatalf("Failed to create rate: %v", err)
+	}
+
+	store := memory.NewStore()
+	rateMiddleware := mgin.NewMiddleware(limiter.New(store, rate))
 
 	corsConfig := cors.DefaultConfig()
-	corsConfig.AllowOrigins = []string{"http://localhost:3000", "https://tmd-nanana.com"}
+	corsConfig.AllowOrigins = []string{"http://localhost:3003", "https://tmd-nanana.com"}
 	corsConfig.AllowHeaders = append(corsConfig.AllowHeaders, "Authorization")
-
 	r.Use(
 		gzip.Gzip(gzip.DefaultCompression),
 		cors.New(corsConfig),
@@ -34,7 +40,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 	}
 
 	r.NoRoute(func(c *gin.Context) {
-		c.File("./frontend/dist/index.html")
+		c.File("./frontend/public/index.html")
 	})
 
 	return r
