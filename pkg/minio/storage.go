@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
+	"time"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -16,7 +18,7 @@ type Storage struct {
 	basePath string
 }
 
-func NewMinIOStorage(endpoint, accessKey, secretKey, bucket, basePath string, useSSL bool) (*Storage, error) {
+func NewStorage(endpoint, accessKey, secretKey, bucket, basePath string, useSSL bool) (*Storage, error) {
 	cli, err := minio.New(endpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
 		Secure: useSSL,
@@ -54,4 +56,20 @@ func (m *Storage) StoreBytes(ctx context.Context, data []byte, mimeType, objectN
 	}
 
 	return fmt.Sprintf("minio://%s/%s", m.bucket, objectName), nil
+}
+
+func (m *Storage) GeneratePresignedURL(objectName string, expiry time.Duration) (string, error) {
+	reqParams := make(url.Values)
+
+	presignedURL, err := m.client.PresignedGetObject(
+		context.Background(),
+		m.bucket,
+		objectName,
+		expiry,
+		reqParams,
+	)
+	if err != nil {
+		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+	return presignedURL.String(), nil
 }
