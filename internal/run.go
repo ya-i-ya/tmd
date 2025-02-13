@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"time"
+	"tmd/internal/web"
 	"tmd/pkg/minio"
 
 	"tmd/internal/db"
@@ -33,7 +34,7 @@ func Run() error {
 		return err
 	}
 
-	st, err := minio.NewMinIOStorage(
+	st, err := minio.NewStorage(
 		config.Minio.Endpoint,
 		config.Minio.AccessKey,
 		config.Minio.SecretKey,
@@ -61,7 +62,14 @@ func Run() error {
 		config.Fetching.DialogsLimit,
 		config.Fetching.MessagesLimit,
 	)
+	go func() {
+		handler := web.NewHandler(dbConn, st)
+		router := web.SetupRouter(handler)
 
+		if err := router.Run(":8083"); err != nil {
+			log.Fatal().Err(err).Msg("Failed to run HTTP server")
+		}
+	}()
 	return client.Run(context.Background(), func(ctx context.Context) error {
 		if err := EnsureAuth(ctx, client, config); err != nil {
 			return err
