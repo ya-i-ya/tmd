@@ -27,3 +27,7 @@ go.work.sum
 .idea/
 config.yaml
 dwd
+node_modules
+package-lock.json
+.frontend
+docker/dockerfile.backend

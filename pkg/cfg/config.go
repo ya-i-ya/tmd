@@ -91,12 +91,18 @@ func LoadConfig(path string) (*Config, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	expandedData := os.ExpandEnv(string(data))
+
 	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
+
+	if err := yaml.Unmarshal([]byte(expandedData), &cfg); err != nil {
 		return nil, err
 	}
+
 	if err := cfg.Validate(); err != nil {
 		return nil, err
 	}
+
 	return &cfg, nil
 }

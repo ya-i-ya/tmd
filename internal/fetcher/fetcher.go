@@ -35,7 +35,7 @@ func NewFetcher(client *telegram.Client,
 		storage:       storage,
 		dialogsLimit:  dialogsLimit,
 		messagesLimit: messagesLimit,
-		meChan:        make(chan MeJob, 100),
+		meChan:        make(chan MeJob, 8),
 	}
 
 	workerCount := 5
@@ -50,6 +50,7 @@ func NewFetcher(client *telegram.Client,
 func (f *Fetcher) SetMyUserID(id int64) {
 	f.myUserID = id
 }
+
 func (f *Fetcher) CloseWorkers() {
 	close(f.meChan)
 	f.wg.Wait()

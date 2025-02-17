@@ -2,10 +2,13 @@ package fetcher
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"tmd/internal/db"
 
 	"github.com/gotd/td/tg"
 	"github.com/rs/zerolog/log"
+	"gorm.io/gorm"
 )
 
 func (f *Fetcher) FetchAllDMs(ctx context.Context) error {
@@ -76,7 +79,6 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 		}
 
 		user, found := findUser(users, peer.UserID)
-
 		if !found {
 			inputUser := &tg.InputUser{
 				UserID:     peer.UserID,
@@ -106,8 +108,31 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 			UserID:     user.ID,
 			AccessHash: user.AccessHash,
 		}
+		var chat db.Chat
+		err := f.database.Conn.Where("telegram_id = ?", user.ID).First(&chat).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				chat = db.Chat{
+					TelegramID: user.ID,
+					Title:      dialogName,
+				}
+				if err := f.database.Conn.Create(&chat).Error; err != nil {
+					return fmt.Errorf("failed to create chat record for DM: %w", err)
+				}
+				log.Info().Int64("chat_id", user.ID).Msg("Created new DM chat record")
+			} else {
+				return fmt.Errorf("failed to query DM chat record: %w", err)
+			}
+		} else {
+			if chat.Title != dialogName {
+				chat.Title = dialogName
+				if err := f.database.Conn.Save(&chat).Error; err != nil {
+					return fmt.Errorf("failed to update DM chat record: %w", err)
+				}
+			}
+		}
+		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName, chat.ID)
 
-		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
 	case *tg.PeerChat:
 		chatID := peer.ChatID
 
@@ -122,17 +147,42 @@ func (f *Fetcher) processDialog(ctx context.Context, dialog tg.DialogClass, user
 			return fmt.Errorf("unexpected response type: %T", resp)
 		}
 
-		dialogName := ""
+		var dialogName string
 		if c, ok := findChat(chatResp, chatID); ok && c.Title != "" {
 			dialogName = c.Title
 		} else {
 			dialogName = fmt.Sprintf("chat%d", chatID)
 		}
 
+		var chat db.Chat
+		err = f.database.Conn.Where("telegram_id = ?", chatID).First(&chat).Error
+		if err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				chat = db.Chat{
+					TelegramID: chatID,
+					Title:      dialogName,
+				}
+				if err := f.database.Conn.Create(&chat).Error; err != nil {
+					return fmt.Errorf("failed to create chat record: %w", err)
+				}
+				log.Info().Int64("chat_id", chatID).Msg("Created new chat record")
+			} else {
+				return fmt.Errorf("failed to query chat record: %w", err)
+			}
+		} else {
+			if chat.Title != dialogName {
+				chat.Title = dialogName
+				if err := f.database.Conn.Save(&chat).Error; err != nil {
+					return fmt.Errorf("failed to update chat record: %w", err)
+				}
+			}
+		}
+
 		inputPeer := &tg.InputPeerChat{
 			ChatID: chatID,
 		}
-		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName)
+		return f.FetchAndProcessMessages(ctx, inputPeer, dialogName, chat.ID)
+
 	default:
 		log.Warn().
 			Str("peer_type", fmt.Sprintf("%T", peer)).
