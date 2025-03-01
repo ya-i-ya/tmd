@@ -31,7 +31,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -42,7 +42,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil {
 				return err
 			}
 			if len(msgs.Messages) < f.messagesLimit {
@@ -53,7 +53,7 @@ func (f *Fetcher) FetchAndProcessMessages(ctx context.Context, peer tg.InputPeer
 			if len(msgs.Messages) == 0 {
 				return nil
 			}
-			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil { //CHANGED
+			if err := f.processMessagesBatch(ctx, msgs.Messages, &offsetID, dialogName, chatUUID); err != nil {
 				return err
 			}
 			return nil
@@ -88,10 +88,17 @@ func (f *Fetcher) processMessagesBatch(
 			Str("content", m.Message).
 			Msg("Processing message")
 
-		senderUserID, _ := peerUserID(m.FromID)
+		senderUserID, valid := peerUserID(m.FromID)
+		if !valid || senderUserID == 0 {
+			log.Warn().Int("message_id", m.ID).Msg("Skipping message with invalid sender")
+			continue
+		}
+
 		var userRecord db.User
 		if senderUserID != 0 {
-			err := f.database.Conn.Where("telegram_user_id = ?", senderUserID).First(&userRecord).Error
+			err := f.database.Conn.Where("telegram_user_id = ?", senderUserID).
+				First(&userRecord).
+				Error
 			if err != nil {
 				if errors.Is(err, gorm.ErrRecordNotFound) {
 					userRecord = db.User{

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -131,7 +132,7 @@ func (h *Handler) GetFile(c *gin.Context) {
 		return
 	}
 
-	presignedURL, err := h.Minio.GeneratePresignedURL(objectName, 15*time.Minute)
+	presignedURL, err := h.Minio.GeneratePresignedURL(objectName, 5*time.Minute)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate URL"})
 		return
@@ -141,5 +142,5 @@ func (h *Handler) GetFile(c *gin.Context) {
 }
 
 func isValidObjectName(name string) bool {
-	return filepath.Base(name) == name && !filepath.IsAbs(name)
+	return !filepath.IsAbs(name) && !strings.Contains(name, "..")
 }

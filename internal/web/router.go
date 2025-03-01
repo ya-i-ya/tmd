@@ -35,7 +35,7 @@ func SetupRouter(handler *Handler) *gin.Engine {
 	api := r.Group("/api/v1")
 	{
 		api.GET("/chats/:chatID/messages", handler.GetChatMessages)
-		api.GET("/files/:objectName", handler.GetFile)
+		api.GET("/files/*objectName", handler.GetFile)
 		api.GET("/chats", handler.GetChats)
 	}
 
